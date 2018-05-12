@@ -231,22 +231,48 @@ document.createElement = function() {
 				return ext;
 			}
 		}
+		var activeVB = null;
+		var activeIB = null;
 		webgl.createBuffer = function() {
-			// Krom.createVertexBuffer
 			var buf = {};
+			buf.data = null;
 			return buf;
 		};
 		webgl.bindBuffer = function(target, buffer) {
-			// Krom.setVertexBuffer
-			// Krom.setIndexBuffer
+			// ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER
+			if (target == webgl.ARRAY_BUFFER) activeVB = buffer;
+			else activeIB = buffer;
 		};
 		webgl.bufferData = function(target, srcData, usage) {
-			// Krom.lockVertexBuffer
-			// Krom.lockIndexBuffer
+			if (target == webgl.ARRAY_BUFFER) {
+				var e1 = {}
+				e1.name = "clipSpacePos";
+				e1.data = 2; // Float3
+				var e2 = {}
+				e2.name = "uv";
+				e2.data = 1; // Float2
+				var structure = [e1, e2]; // Hard-coded structure for now
+				activeVB.data = Krom.createVertexBuffer(srcData.length, structure, 0);
+				var ar = Krom.lockVertexBuffer(activeVB.data);
+				for (i = 0; i < srcData.length; i++) {
+					ar[i] = srcData[i];
+				}
+				Krom.unlockVertexBuffer(activeVB.data);
+			}
+			else {
+				activeIB.data = Krom.createIndexBuffer(srcData.length);
+				var ar = Krom.lockIndexBuffer(activeIB.data);
+				for (i = 0; i < srcData.length; i++) {
+					ar[i] = srcData[i];
+				}
+				Krom.unlockIndexBuffer(activeIB.data);
+			}
 		};
+		// var activeFB = null;
 		webgl.createFramebuffer = function() {
-			var buf = {};
-			return buf;
+			var fb = {};
+			// fb.data = null;
+			return fb;
 		};
 		webgl.enable = function(cap) {
 			// SCISSOR_TEST, CULL_FACE
@@ -258,29 +284,33 @@ document.createElement = function() {
 			if (pname == webgl.GPU_DISJOINT_EXT) return 0;
 			if (pname == webgl.MAX_TEXTURE_SIZE) return 16384;
 		};
+		var activeTex = null;
 		webgl.createTexture = function() {
 			var tex = {};
+			tex.data = null;
 			return tex;
 		};
 		webgl.bindTexture = function(target, texture) {
-			// Krom.log(target);
+			activeTex = texture; // TEXTURE_2D
 		};
 		webgl.texImage2D = function(target, level, internalformat, width, height, border, format, type, data) {
-			// Krom.log(target);
-			// Krom.createTexture
+			// data==null
+			var format = 0;
+			// activeTex.data = Krom.createTexture(width, height, format);
+			activeTex.data = Krom.createRenderTarget(width, height, 0, format, 0, 0);
 		};
 		webgl.bindFramebuffer = function(target, framebuffer) {
-			// Krom.log(target);
+			// FRAMEBUFFER
+			// activeFB = framebuffer;
 		};
 		webgl.framebufferTexture2D = function(target, attachment, textarget, texture, level) {
-			// Krom.log(target);
-			// Krom.createRenderTarget
+			// activeFB.data = Krom.createRenderTarget();
 		};
 		webgl.checkFramebufferStatus = function(target) {
 			return webgl.FRAMEBUFFER_COMPLETE;
 		};
 		webgl.readPixels = function(x, y, width, height, format, type, pixels) {
-			// Krom.getRenderTargetPixels(rt, pixels); // haxe.io.BytesData / Uint8Array
+			Krom.getRenderTargetPixels(activeTex.data, pixels.buffer);
 		};
 		webgl.cullFace = function() {
 			return webgl.BACK;
@@ -290,9 +320,16 @@ document.createElement = function() {
 		};
 		webgl.texParameteri = function(target, pname, param) {
 			// Krom.log(param);
+			// clamp, clamp, nearest, nearest, nomip
+			// Krom.setTextureParameters(texunit, 2, 2, 0, 0, 0);
 		};
 		webgl.texSubImage2D = function(target, level, xoffset, yoffset, width, height, format, type, data) {
-			// Krom.log(format);
+			// var b = Krom.lockRenderTarget(activeTex.data, 0);
+			// Krom.unlockRenderTarget(activeTex.data);
+
+			// var format = 0;
+			// activeTex.data = Krom.createTexture(width, height, format);
+			// activeTex.data = Krom.createRenderTarget(width, height, 0, format, 0, 0);
 		};
 		webgl.createShader = function(type) {
 			var sh = {};
@@ -302,48 +339,81 @@ document.createElement = function() {
 		};
 		webgl.shaderSource = function(shader, source) {
 			shader.source = source;
+			// Krom.log(source);
 		};
 		webgl.compileShader = function(shader) {
-			// handled by compilePipeline
+			if (shader.type == webgl.VERTEX_SHADER) shader.data = Krom.createVertexShaderFromSource(shader.source);
+			else shader.data = Krom.createFragmentShaderFromSource(shader.source);
 		};
 		webgl.getShaderParameter = function(shader, pname) {
-			// COMPILE_STATUS
-			return true;
+			return true; // COMPILE_STATUS
 		};
 		webgl.createProgram = function() {
-			// Krom.createPipeline();
 			var prog = {};
+			prog.data = null;
+			prog.vertexShader = null;
+			prog.fragmentShader = null;
 			return prog;
 		};
 		webgl.attachShader = function(program, shader) {
-			// if (shader.type == webgl.VERTEX_SHADER) program.vertexShader = shader;
-			// else program.fragmentShader = shader;
+			if (shader.type == webgl.VERTEX_SHADER) program.vertexShader = shader;
+			else program.fragmentShader = shader;
 		};
 		webgl.linkProgram = function(program) {
-			// Krom.compilePipeline(program, structure-0-3, length: Int, vertexShader: Dynamic, fragmentShader: Dynamic, geometryShader: Dynamic, tessellationControlShader: Dynamic, tessellationEvaluationShader: Dynamic, state: Dynamic);
+			var e1 = {}
+			e1.name = "clipSpacePos";
+			e1.data = 2; // Float3
+			var e2 = {}
+			e2.name = "uv";
+			e2.data = 1; // Float2
+			var structure = [e1, e2]; // Hard-coded structure for now
+			program.data = Krom.createPipeline();
+			Krom.compilePipeline(program.data, structure, null, null, null, 1, program.vertexShader.data, program.fragmentShader.data, null, null, null, {
+				interleavedLayout: true,
+				cullMode: 0,
+				depthWrite: false,
+				depthMode: 0,
+				stencilMode: 0,
+				stencilBothPass: 0,
+				stencilDepthFail: 0,
+				stencilFail: 0,
+				stencilReferenceValue: 0,
+				stencilReadMask: 0,
+				stencilWriteMask: 0,
+				blendSource: 0,
+				blendDestination: 0,
+				alphaBlendSource: 0,
+				alphaBlendDestination: 0,
+				colorWriteMaskRed: true,
+				colorWriteMaskGreen: true,
+				colorWriteMaskBlue: true,
+				colorWriteMaskAlpha: true,
+				conservativeRasterization: false
+			});
 		};
 		webgl.getProgramParameter = function(program, pname) {
-			// LINK_STATUS, VALIDATE_STATUS
-			return true;
+			return true; // LINK_STATUS, VALIDATE_STATUS
 		};
 		webgl.useProgram = function(program) {
-			// Krom.setPipeline(program);
+			Krom.setPipeline(program.data);
 		};
 		webgl.getAttribLocation = function(program, name) {
-			// clipSpacePos, uv
 			// missing
+			if (name == "clipSpacePos") return 0;
+			else if (name == "uv") return 1;
 			return 0;
 		};
 		webgl.vertexAttribPointer = function(index, size, type, normalized, stride, offset) {
 			// Krom.log(offset);
+			// clipSpacePos=0 size3, uv=1 size2
 		};
 		webgl.enableVertexAttribArray = function(index) {
 			// 0
-			// VertexBuffer::_set()
+			// in VertexBuffer::_set()
 		};
 		webgl.getUniformLocation = function(program, name) {
-			// return Krom.getConstantLocation(program, name);
-			return 0;
+			// Krom.log(name);
+			return Krom.getConstantLocation(program.data, name);
 		};
 		webgl.viewport = function(x, y, width, height) {
 			Krom.viewport(x, y, width, height);
@@ -352,22 +422,27 @@ document.createElement = function() {
 			Krom.scissor(x, y, width, height);
 		};
 		webgl.activeTexture = function(texture) {
-			// Select texture slot for texParameteri
+			// in Krom
 			// TEXTURE0+n
 		};
 		webgl.uniform1i = function(location, v0) {
-			// Krom.setInt(location, v0);
+			Krom.setInt(location, v0);
 		};
 		webgl.uniform2i = function(location, v0, v1) {
 			// missing
-			// Krom.setFloat2(location, v0, v1);
+			Krom.setFloat2(location, v0, v1);
 		};
 		webgl.uniform1f = function(location, v0) {
-			// Krom.setFloat(location, v0);
+			Krom.setFloat(location, v0);
 		};
 		webgl.drawElements = function(mode, count, type, offset) {
 			// TRIANGLES,6,UNSIGNED_SHORT,0
-			// Krom.drawIndexedVertices(0, count);
+			activeTex.renderTarget_ = activeTex.data;
+			Krom.begin(activeTex, null);
+			Krom.setVertexBuffer(activeVB.data);
+			Krom.setIndexBuffer(activeIB.data);
+			Krom.drawIndexedVertices(0, count);
+			Krom.end();
 		};
 		return webgl;
 	};
