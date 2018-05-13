@@ -60,7 +60,7 @@ function getString(b, pos, len) {
 	return s;
 }
 
-var libbin = Krom.loadBlob("krom_lib.js");
+var libbin = Krom.loadBlob("krom_tfjs.js");
 var ar = new Uint8Array(libbin, 0, libbin.byteLength);
 var libstr = getString(ar, 0, ar.length); // String.fromCharCode.apply(null, new Uint16Array(buf));
 
